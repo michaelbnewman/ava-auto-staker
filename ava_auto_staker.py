@@ -206,6 +206,7 @@ except KeyError:
 # Once X-address sufficiently funded, show new balance and proceed.
 if x_balance < staking_amount:
     printlog("Please use faucet to get more funds for {} at https://faucet.ava.network/".format(x_address))
+    printlog("To verify transaction activity, see: https://explorer.ava.network/address/{}".format(x_address[2:]))
 while x_balance < staking_amount:
     try:
         response = requests.post(url.format(jsonrpc_path), json=payload).json()
