@@ -212,6 +212,9 @@ while x_balance < staking_amount:
         response = requests.post(url.format(jsonrpc_path), json=payload).json()
         x_balance = int(response["result"]["balance"])
         sleep(0.5)
+    except ConnectionError:
+        printlog("{}: {}: FAILED: Connection Error. Sleeping 60 seconds...".format(jsonrpc_path, method))
+        sleep(60)
     except KeyError:
         exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
 printlog("{}: {}: {} nAVA for {}".format(jsonrpc_path, method, x_balance, x_address))
@@ -353,6 +356,9 @@ while p_balance < staking_amount:
             sleep(0.5)
         else:
             break
+    except ConnectionError:
+        printlog("{}: {}: FAILED: Connection Error. Sleeping 60 seconds...".format(jsonrpc_path, method))
+        sleep(60)
     except KeyError:
         exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
 printlog("{}: {}: {} nAVA for {}".format(jsonrpc_path, method, p_balance, p_address))
@@ -465,47 +471,54 @@ while not node_found:
         if not node_found:
             printlog("{}: {}: node_id {} not yet found in pending validators list {}".format(jsonrpc_path, method, node_id, validators))
             sleep(60)
+    except ConnectionError:
+        printlog("{}: {}: FAILED: Connection Error. Sleeping 60 seconds...".format(jsonrpc_path, method))
+        sleep(60)
     except KeyError:
         exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
 
 # --- #
 
 while True:
-    jsonrpc_path = "/ext/admin"
-    method = "admin.peers"
-    payload = {
-        "jsonrpc": "2.0",
-        "id":1,
-        "method": "{}".format(method)
-    }
-    response = requests.post(url.format(jsonrpc_path), json=payload).json()
-    # (Pdb) response
-    # {"jsonrpc":"2.0","result":{"peers":["107.23.241.199:21001","167.172.181.170:9651","3.227.207.132:21001","34.207.133.167:21001","54.197.215.186:21001","78.47.30.91:9651","82.59.54.86:9651","95.179.163.191:9651"]},"id":1}
-    peers = response["result"]["peers"]
+    try:
+        jsonrpc_path = "/ext/admin"
+        method = "admin.peers"
+        payload = {
+            "jsonrpc": "2.0",
+            "id":1,
+            "method": "{}".format(method)
+        }
+        response = requests.post(url.format(jsonrpc_path), json=payload).json()
+        # (Pdb) response
+        # {"jsonrpc":"2.0","result":{"peers":["107.23.241.199:21001","167.172.181.170:9651","3.227.207.132:21001","34.207.133.167:21001","54.197.215.186:21001","78.47.30.91:9651","82.59.54.86:9651","95.179.163.191:9651"]},"id":1}
+        peers = response["result"]["peers"]
 
-    jsonrpc_path = "/ext/P"
-    method = "platform.getCurrentValidators"
-    payload = {
-        "jsonrpc": "2.0",
-        "id":1,
-        "method": "{}".format(method)
-    }
-    response = requests.post(url.format(jsonrpc_path), json=payload).json()
-    # (Pdb) response
-    # {"jsonrpc":"2.0","result":{"validators":[
-    #   {"startTime":"1587321008","endtime":"1587407742","stakeAmount":"10000","id":"7LAykkZSYCGaBhacUgG3c5NwATALLYgiw"},
-    #   {"startTime":"1587169531","endtime":"1587774031","stakeAmount":"100000","id":"5Gyq9q8f2yX3tFze6MFj1VfDkFQtUjthk"},
-    validators = response["result"]["validators"]
-    if not validators:
-        printlog("{}: {}: No validators found. Retrying in 60 seconds...".format(jsonrpc_path, method))
-        sleep(60)
-    else:
-        validator_found = False
-        for validator in validators:
-            if validator["id"] == node_id:
-                validator_found = True
-        if validator_found:
-            printlog("{}: {}: There are {} peers, and {} validators including node_id {}.".format(jsonrpc_path, method, len(peers), len(validators), node_id))                
+        jsonrpc_path = "/ext/P"
+        method = "platform.getCurrentValidators"
+        payload = {
+            "jsonrpc": "2.0",
+            "id":1,
+            "method": "{}".format(method)
+        }
+        response = requests.post(url.format(jsonrpc_path), json=payload).json()
+        # (Pdb) response
+        # {"jsonrpc":"2.0","result":{"validators":[
+        #   {"startTime":"1587321008","endtime":"1587407742","stakeAmount":"10000","id":"7LAykkZSYCGaBhacUgG3c5NwATALLYgiw"},
+        #   {"startTime":"1587169531","endtime":"1587774031","stakeAmount":"100000","id":"5Gyq9q8f2yX3tFze6MFj1VfDkFQtUjthk"},
+        validators = response["result"]["validators"]
+        if not validators:
+            printlog("{}: {}: No validators found. Retrying in 60 seconds...".format(jsonrpc_path, method))
+            sleep(60)
         else:
-            printlog("{}: {}: There are {} peers, and {} validators but node_id {} not yet found.".format(jsonrpc_path, method, len(peers), len(validators), node_id))                
-        sleep(600)
+            validator_found = False
+            for validator in validators:
+                if validator["id"] == node_id:
+                    validator_found = True
+            if validator_found:
+                printlog("{}: {}: There are {} peers, and {} validators including node_id {}.".format(jsonrpc_path, method, len(peers), len(validators), node_id))                
+            else:
+                printlog("{}: {}: There are {} peers, and {} validators but node_id {} not yet found.".format(jsonrpc_path, method, len(peers), len(validators), node_id))                
+            sleep(600)
+    except ConnectionError:
+        printlog("{}: {}: FAILED: Connection Error. Sleeping 60 seconds...".format(jsonrpc_path, method))
+        sleep(60)
