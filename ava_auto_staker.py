@@ -19,7 +19,8 @@ from uuid import uuid4
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-staking_amount = int(config["STAKING"]["staking_amount"])
+staking_amount = int(config["STAKING"]["amount_nAVA"])
+staking_duration = int(config["STAKING"]["duration_days"])
 
 url = config["RPC"]["url"] + "{}"
 platform_payerNonce = 0
@@ -383,7 +384,7 @@ printlog("{}: {}: {} nAVA for {}".format(jsonrpc_path, method, p_balance, p_addr
 # Create the Unsigned Transaction
 
 start_time = int((datetime.now() + timedelta(minutes=10)).timestamp())
-end_time = int((datetime.now() + timedelta(days=1, minutes=15)).timestamp())
+end_time = int((datetime.now() + timedelta(days=staking_duration, minutes=15)).timestamp())
 
 platform_payerNonce = platform_payerNonce + 1
 jsonrpc_path = "/ext/P"
