@@ -6,6 +6,7 @@ https://github.com/michaelbnewman/ava-auto-staker
 Usage: ./ava_auto_staker.py
 """
 
+import configparser
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 import requests
@@ -15,9 +16,12 @@ from sys import exit
 from time import sleep
 from uuid import uuid4
 
-staking_amount = 20000  # nAVA
+config = configparser.ConfigParser()
+config.read("config.ini")
 
-url = "http://127.0.0.1:9650{}"
+staking_amount = int(config["STAKING"]["staking_amount"])
+
+url = config["RPC"]["url"] + "{}"
 platform_payerNonce = 0
 
 def printlog(message):
@@ -28,31 +32,36 @@ def printlog(message):
 
 # Create keystore user
 
-jsonrpc_path = "/ext/keystore"
-method = "keystore.createUser"
-username = "USER-" + uuid4().hex
-password = "PASS-" + uuid4().urn
-payload = {
-     "jsonrpc":"2.0",
-     "id":1,
-     "method":"{}".format(method),
-     "params":{
-         "username":"{}".format(username),
-         "password":"{}".format(password)
-     }
-}
-while True:
-    try:
-        response = requests.post(url.format(jsonrpc_path), json=payload).json()
-        # (Pdb) response
-        # {'jsonrpc': '2.0', 'result': {'success': True}, 'id': 1}
-        assert response["result"]["success"] == True
-        printlog("/ext/keystore: keystore.createUser: username {} password {}".format(username, password))
-        break
-    except KeyError:
-        exit("/ext/keystore: keystore.createUser: Failed: {}".format(response))
-    except ConnectionError:
-        sleep(1.0)
+username = config["KEYSTORE"]["username"]
+password = config["KEYSTORE"]["password"]
+if (not username) or (not password):
+    jsonrpc_path = "/ext/keystore"
+    method = "keystore.createUser"
+    username = "USER-" + uuid4().hex
+    password = "PASS-" + uuid4().urn
+    payload = {
+         "jsonrpc":"2.0",
+         "id":1,
+         "method":"{}".format(method),
+         "params":{
+             "username":"{}".format(username),
+             "password":"{}".format(password)
+         }
+    }
+    while True:
+        try:
+            response = requests.post(url.format(jsonrpc_path), json=payload).json()
+            # (Pdb) response
+            # {'jsonrpc': '2.0', 'result': {'success': True}, 'id': 1}
+            assert response["result"]["success"] == True
+            printlog("/ext/keystore: keystore.createUser: username {} password {}".format(username, password))
+            break
+        except KeyError:
+            exit("/ext/keystore: keystore.createUser: Failed: {}".format(response))
+        except ConnectionError:
+            sleep(1.0)
+else:
+    printlog("/ext/keystore: Using existing username {} password {}".format(username, password))
 
 # --- #
 
@@ -79,58 +88,64 @@ while not node_id:
     except KeyError:
         printlog("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
         sleep(3.0)
+    except ConnectionError:
+        sleep(1.0)
 
 # --- #
 
 # Create X-address.
 
-jsonrpc_path = "/ext/bc/X"
-method = "avm.createAddress"
-payload = {
-    "jsonrpc":"2.0",
-    "id":1,
-    "method":"{}".format(method),
-    "params":{
-        "username":"{}".format(username),
-        "password":"{}".format(password)
+x_address = config["X-CHAIN"]["address"]
+if not x_address:
+    jsonrpc_path = "/ext/bc/X"
+    method = "avm.createAddress"
+    payload = {
+        "jsonrpc":"2.0",
+        "id":1,
+        "method":"{}".format(method),
+        "params":{
+            "username":"{}".format(username),
+            "password":"{}".format(password)
+        }
     }
-}
-x_address = None
-while not x_address:
-    try:
-        response = requests.post(url.format(jsonrpc_path), json=payload).json()
-        # (Pdb) response
-        # {'jsonrpc': '2.0', 'result': {'address': 'X-HP7Do5SP3Z9MmcMkBJKw7EPoPZmJAihQ3'}, 'id': 1}
-        x_address = response["result"]["address"]
-        printlog("{}: {}: {}".format(jsonrpc_path, method, x_address))
-    except JSONDecodeError:
-        sleep(1.0)
-    except KeyError:
-        exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
+    x_address = None
+    while not x_address:
+        try:
+            response = requests.post(url.format(jsonrpc_path), json=payload).json()
+            # (Pdb) response
+            # {'jsonrpc': '2.0', 'result': {'address': 'X-HP7Do5SP3Z9MmcMkBJKw7EPoPZmJAihQ3'}, 'id': 1}
+            x_address = response["result"]["address"]
+            printlog("{}: {}: {}".format(jsonrpc_path, method, x_address))
+        except JSONDecodeError:
+            sleep(1.0)
+        except KeyError:
+            exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
 
 # --- #
 
 # Create P-address.
 
-jsonrpc_path = "/ext/P"
-method = "platform.createAccount"
-payload = {
-    "jsonrpc": "2.0",
-    "id":1,
-    "method": "{}".format(method),
-    "params": {
-        "username": "{}".format(username),
-        "password": "{}".format(password)
+p_address = config["P-CHAIN"]["address"]
+if not p_address:
+    jsonrpc_path = "/ext/P"
+    method = "platform.createAccount"
+    payload = {
+        "jsonrpc": "2.0",
+        "id":1,
+        "method": "{}".format(method),
+        "params": {
+            "username": "{}".format(username),
+            "password": "{}".format(password)
+        }
     }
-}
-response = requests.post(url.format(jsonrpc_path), json=payload).json()
-# (Pdb) response
-# {"jsonrpc":"2.0","result":{"address":"BCLMV6ZM36ApYMPwZwsTaRamjSJHkA7yT"},"id":1}
-try:
-    p_address = response["result"]["address"]
-    printlog("{}: {}: {}".format(jsonrpc_path, method, p_address))
-except KeyError:
-    exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
+    response = requests.post(url.format(jsonrpc_path), json=payload).json()
+    # (Pdb) response
+    # {"jsonrpc":"2.0","result":{"address":"BCLMV6ZM36ApYMPwZwsTaRamjSJHkA7yT"},"id":1}
+    try:
+        p_address = response["result"]["address"]
+        printlog("{}: {}: {}".format(jsonrpc_path, method, p_address))
+    except KeyError:
+        exit("{}: {}: FAILED: {}".format(jsonrpc_path, method, response))
 
 # --- #
 
