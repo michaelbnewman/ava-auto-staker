@@ -221,7 +221,7 @@ except KeyError:
 # If insufficient funds to stake, prompt user to go to faucet to fund X-address, and wait.
 # Once X-address sufficiently funded, show new balance and proceed.
 if x_balance < staking_amount:
-    printlog("Please use faucet to get more funds for {} at https://faucet.ava.network/".format(x_address))
+    printlog("Please get more funds at https://faucet.ava.network/?address={}".format(x_address))
     printlog("To verify transaction activity, see: https://explorer.ava.network/address/{}".format(x_address[2:]))
 while x_balance < staking_amount:
     try:
